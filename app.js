@@ -39,6 +39,8 @@ mongoose.set("useCreateIndex", true);
 const userSchema = new mongoose.Schema({
   email: String,
   googleId: String,
+  facebookId: String,
+  secrets: String,
   password: String
 });
 
@@ -152,16 +154,41 @@ app.get("/auth/facebook/secrets",
   });
 
 app.get("/secrets", function(req, res) {
-  if (req.isAuthenticated()) {
-    res.render("secrets");
-  } else {
-    res.redirect("/login");
-  }
+  User.find({"secrets": {$ne:null}}, function(err, users) {
+    if (err) {
+      console.log(err);
+    } else {
+      if (users) {
+        res.render("secrets", {
+          usersWithSecrets: users
+        });
+      }
+    }
+  });
 });
 
-app.get("/submit", function(req, res) {
-  res.render("submit");
-});
+app.route("/submit")
+  .get(function(req, res) {
+    if (req.isAuthenticated()) {
+      res.render("submit");
+    } else {
+      res.redirect("/login");
+    }
+  })
+  .post(function(req, res) {
+    User.findById(req.user.id, function(err, user) {
+      if (err) {
+        console.log(err);
+      } else {
+        if (user) {
+          user.secrets = req.body.secret;
+          user.save(function() {
+            res.redirect("/secrets");
+          });
+        }
+      }
+    });
+  });
 
 app.get("/logout", function(req, res) {
   req.logout();
